@@ -6,7 +6,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_PLUGIN(example) {
+PYBIND11_PLUGIN(affdex) {
     py::module m("affdex", "affdex python bindings");
 
     py::class_<affdex::PhotoDetector>(m, "PhotoDetector")
