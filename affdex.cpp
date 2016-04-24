@@ -1,4 +1,5 @@
 #include <Face.h>
+#include <Frame.h>
 #include <PhotoDetector.h>
 
 #include <pybind11/pybind11.h>
@@ -8,6 +9,25 @@ namespace py = pybind11;
 
 PYBIND11_PLUGIN(affdex) {
     py::module m("affdex", "affdex python bindings");
+
+    py::enum_<affdex::Frame::COLOR_FORMAT>(m, "COLOR_FORMAT")
+    .value("RGB", affdex::Frame::COLOR_FORMAT::RGB)
+    .value("BGR", affdex::Frame::COLOR_FORMAT::BGR)
+    .value("RGBA", affdex::Frame::COLOR_FORMAT::RGBA)
+    .value("BGRA", affdex::Frame::COLOR_FORMAT::BGRA)
+    .value("YUV_NV21", affdex::Frame::COLOR_FORMAT::YUV_NV21)
+    .value("YUV_I420", affdex::Frame::COLOR_FORMAT::YUV_I420)
+    .export_values();
+
+    py::class_<affdex::Frame>(m, "Frame")
+    .def(py::init<int, int, void *, affdex::Frame::COLOR_FORMAT, float>())
+    .def("getColorFormat", &affdex::Frame::getColorFormat)
+    .def("getBGRByteArray", &affdex::Frame::getBGRByteArray)
+    .def("getBGRByteArrayLength", &affdex::Frame::getBGRByteArrayLength)
+    .def("getWidth", &affdex::Frame::getWidth)
+    .def("getHeight", &affdex::Frame::getHeight)
+    .def("getTimestamp", &affdex::Frame::getTimestamp)
+    .def("setTimestamp", &affdex::Frame::setTimestamp);
 
     py::class_<affdex::PhotoDetector>(m, "PhotoDetector")
     .def(py::init<const unsigned int, const affdex::FaceDetectorMode>())
