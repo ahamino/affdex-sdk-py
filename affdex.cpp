@@ -1,11 +1,35 @@
+#include <string>
+#include <memory>
+
 #include <Face.h>
 #include <Frame.h>
 #include <PhotoDetector.h>
+#include <ImageListener.h>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
+
+class ImgCallbacks : public affdex::ImageListener {
+public:
+  void onImageResults(std::map<affdex::FaceId, affdex::Face> faces, affdex::Frame image) {
+    if (imageResultsCallback) {
+      imageResultsCallback.call(faces, image);
+    }
+  };
+
+  void onImageCapture(affdex::Frame image) {
+    if (imageCaptureCallback) {
+      imageCaptureCallback.call(image);
+    }
+  };
+
+  py::object imageResultsCallback;
+  py::object imageCaptureCallback;
+};
+
+std::shared_ptr<ImgCallbacks> callbacks = std::make_shared<ImgCallbacks>();
 
 PYBIND11_PLUGIN(affdex) {
     py::module m("affdex", "affdex python bindings");
@@ -19,8 +43,10 @@ PYBIND11_PLUGIN(affdex) {
     .value("YUV_I420", affdex::Frame::COLOR_FORMAT::YUV_I420)
     .export_values();
 
+    //py::class_<affdex::path>(m, "path");
+
     py::class_<affdex::Frame>(m, "Frame")
-    .def(py::init<int, int, void *, affdex::Frame::COLOR_FORMAT, float>())
+    .def(py::init<int, int, char *, affdex::Frame::COLOR_FORMAT, float>())
     .def("getColorFormat", &affdex::Frame::getColorFormat)
     .def("getBGRByteArray", &affdex::Frame::getBGRByteArray)
     .def("getBGRByteArrayLength", &affdex::Frame::getBGRByteArrayLength)
@@ -29,10 +55,6 @@ PYBIND11_PLUGIN(affdex) {
     .def("getTimestamp", &affdex::Frame::getTimestamp)
     .def("setTimestamp", &affdex::Frame::setTimestamp);
 
-    py::class_<affdex::PhotoDetector>(m, "PhotoDetector")
-    .def(py::init<const unsigned int, const affdex::FaceDetectorMode>())
-    .def("process", &affdex::PhotoDetector::process);
-
     py::class_<affdex::Detector>(m, "Detector")
     .def("setDetectAllExpressions", &affdex::Detector::setDetectAllExpressions)
     .def("setDetectAllEmotions", &affdex::Detector::setDetectAllEmotions)
@@ -40,11 +62,24 @@ PYBIND11_PLUGIN(affdex) {
     .def("setDetectGender",  &affdex::Detector::setDetectGender)
     .def("setDetectGlasses",  &affdex::Detector::setDetectGlasses)
     .def("setLicenseString", &affdex::Detector::setLicenseString)
-    .def("setImageListener", &affdex::Detector::setImageListener)
-    .def("getImageListener", &affdex::Detector::getImageListener)
+    .def("setClassifierPath", &affdex::Detector::setClassifierPath)
+    .def("setImageResultsCallback",
+         [](affdex::Detector &d, py::object callback) {
+           callbacks->imageResultsCallback = callback;
+           d.setImageListener(callbacks.get());
+         })
+    .def("setImageCaptureCallback",
+        [](affdex::Detector &d, py::object callback) {
+          callbacks->imageResultsCallback = callback;
+          d.setImageListener(callbacks.get());
+        })
     .def("start", &affdex::Detector::start)
     .def("stop", &affdex::Detector::stop)
     .def("reset", &affdex::Detector::reset);
+
+    py::class_<affdex::PhotoDetector>(m, "PhotoDetector", py::base<affdex::Detector>())
+    .def(py::init<const unsigned int, const affdex::FaceDetectorMode>())
+    .def("process", &affdex::PhotoDetector::process);
 
 
     py::class_<affdex::ImageListener>(m, "ImageListener")
